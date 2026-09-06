@@ -2,7 +2,6 @@
 individual coverage + slate prioritization, with real parallel market research and
 agent self-QA."""
 
-import base64
 import os
 from pathlib import Path
 
@@ -187,13 +186,12 @@ if uploaded_files and len(uploaded_files) > MAX_SCRIPTS:
     )
     uploaded_files = None
 
-with st.expander("Preview the bundled sample script (Cold Storage.pdf)"):
-    sample_b64 = base64.b64encode(_load_sample_pdf_bytes()).decode("utf-8")
-    st.markdown(
-        f'<iframe src="data:application/pdf;base64,{sample_b64}" '
-        'width="100%" height="500" type="application/pdf"></iframe>',
-        unsafe_allow_html=True,
-    )
+st.download_button(
+    "View / download the bundled sample script (Cold Storage.pdf)",
+    data=_load_sample_pdf_bytes(),
+    file_name="cold_storage_sample.pdf",
+    mime="application/pdf",
+)
 
 
 def _start_processing(source: str) -> None:
