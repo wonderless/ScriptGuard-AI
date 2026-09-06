@@ -2,7 +2,9 @@
 individual coverage + slate prioritization, with real parallel market research and
 agent self-QA."""
 
+import base64
 import os
+from pathlib import Path
 
 import streamlit as st
 from dotenv import load_dotenv
@@ -28,6 +30,7 @@ if not os.getenv("PARALLEL_API_KEY"):
 
 st.session_state.setdefault("processing", False)
 st.session_state.setdefault("results", None)
+st.session_state.setdefault("run_source", None)
 
 st.markdown("### How it works — 17 agents orchestrated with Google ADK")
 stage1, stage2, stage3, stage4 = st.columns(4)
@@ -163,6 +166,13 @@ def render_report_detail(report: CoverageReport) -> None:
 
 
 MAX_SCRIPTS = 3
+SAMPLE_SCRIPT_PATH = Path(__file__).parent / "sample_scripts" / "cold_storage_sample.pdf"
+
+
+@st.cache_data
+def _load_sample_pdf_bytes() -> bytes:
+    return SAMPLE_SCRIPT_PATH.read_bytes()
+
 
 uploaded_files = st.file_uploader(
     f"Upload one or more PDF scripts (max {MAX_SCRIPTS} per run)",
@@ -177,21 +187,42 @@ if uploaded_files and len(uploaded_files) > MAX_SCRIPTS:
     )
     uploaded_files = None
 
+with st.expander("Preview the bundled sample script (Cold Storage.pdf)"):
+    sample_b64 = base64.b64encode(_load_sample_pdf_bytes()).decode("utf-8")
+    st.markdown(
+        f'<iframe src="data:application/pdf;base64,{sample_b64}" '
+        'width="100%" height="500" type="application/pdf"></iframe>',
+        unsafe_allow_html=True,
+    )
 
-def _start_processing() -> None:
+
+def _start_processing(source: str) -> None:
     st.session_state.processing = True
     st.session_state.results = None
+    st.session_state.run_source = source
 
 
-if uploaded_files:
+col_generate, col_sample = st.columns(2)
+with col_generate:
     st.button(
         "Generate slate coverage",
         type="primary",
+        disabled=st.session_state.processing or not uploaded_files,
+        on_click=_start_processing,
+        args=("upload",),
+    )
+with col_sample:
+    st.button(
+        "Try with a sample script",
         disabled=st.session_state.processing,
         on_click=_start_processing,
+        args=("sample",),
     )
 
-    if st.session_state.processing:
+if st.session_state.processing:
+    if st.session_state.run_source == "sample":
+        script_texts = [extract_text_from_pdf(_load_sample_pdf_bytes())]
+    else:
         script_texts = []
         with st.spinner(f"Extracting text from {len(uploaded_files)} PDF(s)..."):
             for f in uploaded_files:
@@ -201,56 +232,56 @@ if uploaded_files:
                 else:
                     st.warning(f"Couldn't extract text from {f.name} (scanned PDF?), skipping it.")
 
-        if not script_texts:
-            st.error("No PDF produced readable text.")
-            st.session_state.processing = False
-        else:
-            status_msg = (
-                f"Analyzing {len(script_texts)} script(s), researching the market in parallel, "
-                "auditing quality, and prioritizing the slate... this can take a few minutes."
-            )
-            with st.spinner(status_msg):
-                try:
-                    reports, ranking = run_slate_triage(script_texts)
-                except RateLimitExceeded as exc:
-                    st.session_state.processing = False
-                    st.warning(str(exc))
-                    st.stop()
-                except Exception as exc:  # noqa: BLE001 — surface any pipeline failure to the user
-                    st.session_state.processing = False
-                    st.error(f"Error generating coverage: {exc}")
-                    st.stop()
+    if not script_texts:
+        st.error("No PDF produced readable text.")
+        st.session_state.processing = False
+    else:
+        status_msg = (
+            f"Analyzing {len(script_texts)} script(s), researching the market in parallel, "
+            "auditing quality, and prioritizing the slate... this can take a few minutes."
+        )
+        with st.spinner(status_msg):
+            try:
+                reports, ranking = run_slate_triage(script_texts)
+            except RateLimitExceeded as exc:
+                st.session_state.processing = False
+                st.warning(str(exc))
+                st.stop()
+            except Exception as exc:  # noqa: BLE001 — surface any pipeline failure to the user
+                st.session_state.processing = False
+                st.error(f"Error generating coverage: {exc}")
+                st.stop()
 
-            st.session_state.results = (reports, ranking)
-            st.session_state.processing = False
+        st.session_state.results = (reports, ranking)
+        st.session_state.processing = False
 
-    if st.session_state.results is not None:
-        reports, ranking = st.session_state.results
-        reports_by_title = {r.script_analysis.title: r for r in reports}
+if st.session_state.results is not None:
+    reports, ranking = st.session_state.results
+    reports_by_title = {r.script_analysis.title: r for r in reports}
 
-        st.header("Slate prioritization")
-        for entry in ranking.ranked_slate:
-            verdict_color = VERDICT_COLOR[entry.verdict]
-            confidence_color = CONFIDENCE_COLOR[entry.confidence]
-            st.markdown(
-                f"**#{entry.rank} — {esc(entry.title)}** "
-                f":{verdict_color}[{entry.verdict}] · confidence :{confidence_color}[{entry.confidence}] "
-                f"— {esc(entry.one_line_rationale)}"
-            )
+    st.header("Slate prioritization")
+    for entry in ranking.ranked_slate:
+        verdict_color = VERDICT_COLOR[entry.verdict]
+        confidence_color = CONFIDENCE_COLOR[entry.confidence]
+        st.markdown(
+            f"**#{entry.rank} — {esc(entry.title)}** "
+            f":{verdict_color}[{entry.verdict}] · confidence :{confidence_color}[{entry.confidence}] "
+            f"— {esc(entry.one_line_rationale)}"
+        )
 
-        st.markdown("**Portfolio observations**")
-        for insight in ranking.portfolio_insights:
-            st.markdown(f"- {esc(insight)}")
+    st.markdown("**Portfolio observations**")
+    for insight in ranking.portfolio_insights:
+        st.markdown(f"- {esc(insight)}")
 
-        st.markdown("**Executive recommendation**")
-        st.write(esc(ranking.overall_recommendation))
+    st.markdown("**Executive recommendation**")
+    st.write(esc(ranking.overall_recommendation))
 
+    st.divider()
+    st.header("Individual coverage per script")
+    for entry in ranking.ranked_slate:
+        report = reports_by_title.get(entry.title)
+        if report is None:
+            continue
+        st.markdown(f"## #{entry.rank} — {esc(report.script_analysis.title)}")
+        render_report_detail(report)
         st.divider()
-        st.header("Individual coverage per script")
-        for entry in ranking.ranked_slate:
-            report = reports_by_title.get(entry.title)
-            if report is None:
-                continue
-            st.markdown(f"## #{entry.rank} — {esc(report.script_analysis.title)}")
-            render_report_detail(report)
-            st.divider()

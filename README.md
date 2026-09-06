@@ -188,6 +188,12 @@ the end); in real tests, an individual script takes ~25 seconds regardless of le
 a slate of 3 scripts across distinct genres took ~81 seconds total (see [Project
 status](#project-status)).
 
+No script on hand? Click **Try with a sample script** to run the pipeline on a bundled
+script (`sample_scripts/cold_storage_sample.pdf`) with no upload needed — an inline PDF
+preview above the buttons ("Preview the bundled sample script") lets you see exactly what
+gets analyzed before running it. This still counts as a real run against the app's rate
+limit (see below).
+
 ## Project structure
 
 ```
@@ -195,6 +201,8 @@ ScriptGuard AI/
 ├── app.py                              # Streamlit interface (slate + individual coverage)
 ├── requirements.txt
 ├── .env.example
+├── sample_scripts/
+│   └── cold_storage_sample.pdf         # Bundled sample for the "Try with a sample script" button
 ├── scriptguard/
 │   ├── schemas.py                      # Pydantic: ScriptAnalysis, MarketResearch, PersonaOpinion,
 │   │                                   #   QACritique, CoverageReport, SlateRanking
