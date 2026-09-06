@@ -24,10 +24,9 @@ just "it compiles":
   (Financial Analyst disagreeing with the rest) and the portfolio ranking correctly
   identified cannibalization risk between two similarly-toned projects.
 
-**Pending (out of scope for this work, on the author):** pushing the repo to GitHub as
-public with the license visible in "About", deploying with a public URL (Streamlit
-Community Cloud / Cloud Run), and recording the demo video — all of this takes minutes
-and is done manually when the dev session wraps up.
+**Submission-ready:** the repo is public on GitHub with the license visible in "About",
+the app is deployed with a public URL (Streamlit Community Cloud), and the demo video has
+been recorded.
 
 ## Why this isn't just another report generator
 
