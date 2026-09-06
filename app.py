@@ -186,14 +186,6 @@ if uploaded_files and len(uploaded_files) > MAX_SCRIPTS:
     )
     uploaded_files = None
 
-st.download_button(
-    "View / download the bundled sample script (Cold Storage.pdf)",
-    data=_load_sample_pdf_bytes(),
-    file_name="cold_storage_sample.pdf",
-    mime="application/pdf",
-)
-
-
 def _start_processing(source: str) -> None:
     st.session_state.processing = True
     st.session_state.results = None
@@ -210,6 +202,12 @@ with col_generate:
         args=("upload",),
     )
 with col_sample:
+    st.download_button(
+        "View / download the bundled sample script (Cold Storage.pdf)",
+        data=_load_sample_pdf_bytes(),
+        file_name="cold_storage_sample.pdf",
+        mime="application/pdf",
+    )
     st.button(
         "Try with a sample script",
         disabled=st.session_state.processing,
