@@ -29,50 +29,49 @@ if not os.getenv("PARALLEL_API_KEY"):
 st.session_state.setdefault("processing", False)
 st.session_state.setdefault("results", None)
 
-if st.session_state.results is None and not st.session_state.processing:
-    st.markdown("### How it works — 17 agents orchestrated with Google ADK")
-    stage1, stage2, stage3, stage4 = st.columns(4)
-    with stage1:
-        with st.container(border=True, height=230):
-            st.markdown("**1. Narrative analysis**")
-            st.caption("1 agent")
-            st.write(
-                "Gemini analyzes the full script: three-act structure, characters, "
-                "genre, tone, and pacing."
-            )
-    with stage2:
-        with st.container(border=True, height=230):
-            st.markdown("**2. Market research**")
-            st.caption("3 agents — 2 in parallel + 1 formatter")
-            st.write(
-                "2 agents in parallel (`ParallelAgent`) research box-office "
-                "comparables and genre trends via Parallel's Search API; a third "
-                "converts those notes into structured JSON."
-            )
-    with stage3:
-        with st.container(border=True, height=230):
-            st.markdown("**3. Greenlight Committee**")
-            st.caption("9 agents — 4 personas × 2 rounds + 1 moderator")
-            st.write(
-                "4 persona agents (Creative Producer, Intl. Distribution, Financial "
-                "Analyst, Indie/Festival Reader) give their opinion and then debate "
-                "in a second round, reacting to each other; a moderator synthesizes "
-                "the final verdict."
-            )
-    with stage4:
-        with st.container(border=True, height=230):
-            st.markdown("**4. QA + Prioritization**")
-            st.caption("4 agents — 3 in the QA loop + 1 for prioritization")
-            st.write(
-                "A 3-agent `LoopAgent` audits the report against the real research "
-                "(up to 3 iterations) and, if you upload several scripts, an "
-                "additional agent prioritizes the whole slate as a portfolio."
-            )
-    st.caption(
-        "Orchestrated with Google ADK (`SequentialAgent` + `ParallelAgent` x3 + "
-        "`LoopAgent`) on top of Gemini, with real Parallel research on every run."
-    )
-    st.divider()
+st.markdown("### How it works — 17 agents orchestrated with Google ADK")
+stage1, stage2, stage3, stage4 = st.columns(4)
+with stage1:
+    with st.container(border=True, height=230):
+        st.markdown("**1. Narrative analysis**")
+        st.caption("1 agent")
+        st.write(
+            "Gemini analyzes the full script: three-act structure, characters, "
+            "genre, tone, and pacing."
+        )
+with stage2:
+    with st.container(border=True, height=230):
+        st.markdown("**2. Market research**")
+        st.caption("3 agents — 2 in parallel + 1 formatter")
+        st.write(
+            "2 agents in parallel (`ParallelAgent`) research box-office "
+            "comparables and genre trends via Parallel's Search API; a third "
+            "converts those notes into structured JSON."
+        )
+with stage3:
+    with st.container(border=True, height=230):
+        st.markdown("**3. Greenlight Committee**")
+        st.caption("9 agents — 4 personas × 2 rounds + 1 moderator")
+        st.write(
+            "4 persona agents (Creative Producer, Intl. Distribution, Financial "
+            "Analyst, Indie/Festival Reader) give their opinion and then debate "
+            "in a second round, reacting to each other; a moderator synthesizes "
+            "the final verdict."
+        )
+with stage4:
+    with st.container(border=True, height=230):
+        st.markdown("**4. QA + Prioritization**")
+        st.caption("4 agents — 3 in the QA loop + 1 for prioritization")
+        st.write(
+            "A 3-agent `LoopAgent` audits the report against the real research "
+            "(up to 3 iterations) and, if you upload several scripts, an "
+            "additional agent prioritizes the whole slate as a portfolio."
+        )
+st.caption(
+    "Orchestrated with Google ADK (`SequentialAgent` + `ParallelAgent` x3 + "
+    "`LoopAgent`) on top of Gemini, with real Parallel research on every run."
+)
+st.divider()
 
 
 def esc(text: str) -> str:
