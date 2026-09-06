@@ -121,6 +121,38 @@ with **Google ADK** (17 agents in total, coordinated through 1 `SequentialAgent`
 > ("Fatal error on SSL transport") when destroying async HTTP clients mid-use. Verified
 > without that traceback after 2+ consecutive runs in the same process.
 
+## Interface
+
+The UI is a deliberately designed "greenlight room" rather than default Streamlit: a dark
+palette (`#0B0E14` ground, muted gold `#C9A227` accent), Playfair Display for headings and
+Inter for body copy, and a single card system reused across every section — so no part of
+the coverage reads as an undifferentiated wall of text.
+
+- **Verdicts** are pill badges instead of coloured text: RECOMMEND / CONSIDER / PASS as a
+  filled pill, confidence as an outlined one, so the two are distinguishable at a glance.
+- **The committee debate** — the product's actual differentiator — gives each persona a
+  card whose left border carries their final verdict lean, with round 1 and round 2 side
+  by side and explicit `Changed position` / `Dissenting` tags.
+- **Strengths, weaknesses, market research and the narrative breakdown** all use the same
+  panel system, colour-coded green/red/gold by meaning, with acts, characters and
+  comparable titles as their own sub-cards.
+- **Responsive**: the stage grid reflows 4 → 2×2 → 1 column, and the debate's two rounds
+  stack vertically (the connector arrow turning from → to ↓) on narrow screens. Verified
+  with automated screenshots and overflow checks at 1440 / 1100 / 900 / 768 / 480 / 375 px.
+
+Two implementation details worth knowing if you fork this:
+
+> Technical note 3: the injected CSS does not rely on `.streamlit/config.toml` alone. That
+> file is only picked up when Streamlit runs with the project as the working directory, and
+> without it the dark cards would otherwise land on a white page — so the stylesheet paints
+> the app background, header and buttons itself.
+
+> Technical note 4: agent- and script-generated text is escaped with `html.escape()` before
+> being interpolated into the raw HTML blocks (`esc_html()` in `app.py`). Script text is
+> untrusted input — a stray `<` would break the markup, and tags in a screenplay would
+> otherwise be injected into the page. Agent-supplied source URLs are only turned into
+> links when they are `http(s)`.
+
 ## Known limitations (honesty first)
 
 - The QA agent audits **internal consistency** (is the figure in the coverage backed by
@@ -188,16 +220,18 @@ a slate of 3 scripts across distinct genres took ~81 seconds total (see [Project
 status](#project-status)).
 
 No script on hand? Click **Try with a sample script** to run the pipeline on a bundled
-script (`sample_scripts/cold_storage_sample.pdf`) with no upload needed — the "View /
-download the bundled sample script" button above lets you open it in your browser's own
-PDF viewer to see exactly what gets analyzed before running it. This still counts as a
-real run against the app's rate limit (see below).
+script (`sample_scripts/cold_storage_sample.pdf`) with no upload needed — the **Download
+sample script (PDF)** button above lets you grab that same file to see exactly what gets
+analyzed before running it. This still counts as a real run against the app's rate limit
+(see below).
 
 ## Project structure
 
 ```
 ScriptGuard AI/
-├── app.py                              # Streamlit interface (slate + individual coverage)
+├── app.py                              # Streamlit interface (slate + individual coverage) + UI theme CSS
+├── .streamlit/
+│   └── config.toml                     # Dark base theme so native widgets match the custom CSS
 ├── requirements.txt
 ├── .env.example
 ├── sample_scripts/
@@ -223,7 +257,8 @@ ScriptGuard AI/
 - [Parallel Search API](https://docs.parallel.ai) (`parallel-web`) — real-time market research
 - Pydantic — shared state schemas between agents
 - pypdf — PDF script text extraction
-- Streamlit — web interface
+- Streamlit — web interface, with a custom dark theme (`.streamlit/config.toml` + injected
+  CSS) and Playfair Display / Inter via Google Fonts
 
 ## License
 
