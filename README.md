@@ -14,15 +14,13 @@ Built for the **Agentic Cinema: The Blockbuster Hackathon** (Google Cloud, Paral
 **Functional end-to-end and validated with the real API** (Gemini + Parallel Search), not
 just "it compiles":
 
-- Short individual script (4 pages / ~420 words): ~24 seconds, coherent verdict.
-- Individual script at real feature-length size (~20,300 words, roughly ~100 pages):
-  **25.8 seconds**, no errors, no token issues — only the `ScriptAnalystAgent` processes
-  the script's full text; the other 15 agents work on the already-summarized analysis, so
-  runtime doesn't scale with script length.
-- Slate of 3 scripts across distinct genres (adventure/sci-fi 20K words, comedy 6K,
-  horror 9K): **81 seconds total**. The system detected real dissent within a committee
-  (Financial Analyst disagreeing with the rest) and the portfolio ranking correctly
-  identified cannibalization risk between two similarly-toned projects.
+- Individual script of 4 pages (~420 words): **35 seconds**, coherent verdict.
+- Slate of 3 scripts of 4 pages each: **1 minute 22 seconds** total — 3 full 16-agent
+  pipelines plus the slate-ranking agent, roughly 27 seconds per script.
+
+Both figures come from real runs against the live APIs (Gemini + Parallel Search). Every
+measured run so far uses 4-page scripts; see [Known limitations](#known-limitations-honesty-first)
+for what that does and doesn't tell you about feature-length material.
 
 **Submission-ready:** the repo is public on GitHub with the license visible in "About",
 the app is deployed with a public URL (Streamlit Community Cloud), and the demo video has
@@ -57,6 +55,9 @@ coverage" tool someone else might build for this same hackathon. It was redesign
 
 ## Architecture
 
+Inside `MarketResearchParallelAgent`, the two research agents (`ComparableTitlesAgent`
+and `GenreTrendsAgent`) run **concurrently**, not one after the other.
+
 ```mermaid
 flowchart TD
     PDF["Script PDF(s)"] --> SA
@@ -64,7 +65,7 @@ flowchart TD
     subgraph PIPE["Per-script pipeline (SequentialAgent)"]
         SA["ScriptAnalystAgent<br/>(Gemini)"] --> PAR
 
-        subgraph PAR["MarketResearchParallelAgent<br/>(ParallelAgent — run concurrently)"]
+        subgraph PAR["MarketResearchParallelAgent (ParallelAgent)"]
             direction LR
             CT["ComparableTitlesAgent<br/>+ parallel_search tool"]
             GT["GenreTrendsAgent<br/>+ parallel_search tool"]
@@ -165,8 +166,15 @@ Two implementation details worth knowing if you fork this:
   deterministic and testable instead of an open-ended loop. Both rounds always run,
   whether or not the 4 members agree.
 - Cost/time scales linearly with the number of scripts in the slate: each additional
-  script adds ~25-30 seconds, 16 Gemini calls, and 2 to 6 real Parallel searches. A large
-  slate (10+ scripts) can take several minutes.
+  script adds roughly 27 seconds, 16 Gemini calls, and 2 to 6 real Parallel searches, so a
+  full 3-script slate takes around a minute and a half.
+- **Only benchmarked on 4-page scripts.** The pipeline has not been run on a full
+  feature-length screenplay (~100 pages), because doing so burns a large amount of tokens
+  on a paid key for a demo. By construction only the `ScriptAnalystAgent` receives the
+  script's full text — the other 15 agents work on the already-summarized analysis — so
+  runtime should grow far more slowly than script length, and the analyst's input stays
+  well inside Gemini's context window. Both of those are properties of the design,
+  not measured results: treat feature-length behaviour as untested.
 - Max 3 scripts per run and a hard cap of 5 runs per hour (app-wide, not per user) — a
   deliberate cost-control guardrail for a publicly-hosted demo, not a technical ceiling of
   the pipeline itself.
@@ -215,9 +223,8 @@ streamlit run app.py
 Open the URL Streamlit shows in your browser (`http://localhost:8501` by default), upload
 one or more PDF scripts (a full slate if you have several) and click **Generate slate
 coverage**. Each script runs its own 16-agent pipeline (plus the slate-ranking agent at
-the end); in real tests, an individual script takes ~25 seconds regardless of length, and
-a slate of 3 scripts across distinct genres took ~81 seconds total (see [Project
-status](#project-status)).
+the end); on the 4-page scripts tested so far, a single script takes ~35 seconds and a
+slate of 3 took 1 minute 22 seconds (see [Project status](#project-status)).
 
 No script on hand? Click **Try with a sample script** to run the pipeline on a bundled
 script (`sample_scripts/cold_storage_sample.pdf`) with no upload needed — the **Download

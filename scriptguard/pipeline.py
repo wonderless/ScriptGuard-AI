@@ -76,8 +76,46 @@ MAX_RETRIES = 3
 BASE_BACKOFF_SECONDS = 5
 
 
+def _flatten_exception(exc: BaseException, _seen: set[int] | None = None) -> list[BaseException]:
+    """Expands an exception into itself plus everything nested inside it.
+
+    ADK runs every ParallelAgent through asyncio.TaskGroup, so a sub-agent failure surfaces
+    as an ExceptionGroup whose str() is only "unhandled errors in a TaskGroup (1
+    sub-exception)" — the real 429/503 is in .exceptions (and sometimes further down a
+    __cause__/__context__ chain). Duck-typed on .exceptions so it also works on 3.10,
+    where ExceptionGroup doesn't exist as a builtin."""
+    if _seen is None:
+        _seen = set()
+    if id(exc) in _seen:
+        return []
+    _seen.add(id(exc))
+
+    flattened: list[BaseException] = [exc]
+    for sub in getattr(exc, "exceptions", ()) or ():
+        flattened.extend(_flatten_exception(sub, _seen))
+    for nested in (exc.__cause__, exc.__context__):
+        if nested is not None:
+            flattened.extend(_flatten_exception(nested, _seen))
+    return flattened
+
+
+def describe_error(exc: BaseException) -> str:
+    """Human-readable message for an exception that may be wrapped in a TaskGroup's
+    ExceptionGroup, so the UI never shows the bare "1 sub-exception" text."""
+    leaves = [e for e in _flatten_exception(exc) if not getattr(e, "exceptions", None)]
+    messages: list[str] = []
+    for leaf in leaves:
+        text = str(leaf).strip() or type(leaf).__name__
+        entry = f"{type(leaf).__name__}: {text}"
+        if entry not in messages:
+            messages.append(entry)
+    if not messages:
+        return f"{type(exc).__name__}: {exc}"
+    return " | ".join(messages)
+
+
 def _is_retryable(exc: Exception) -> bool:
-    message = str(exc)
+    message = " ".join(str(e) for e in _flatten_exception(exc))
     return any(marker in message for marker in RETRYABLE_MARKERS)
 
 

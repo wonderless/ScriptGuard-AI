@@ -10,7 +10,7 @@ import streamlit as st
 from dotenv import load_dotenv
 
 from scriptguard.pdf_utils import extract_text_from_pdf
-from scriptguard.pipeline import RateLimitExceeded, run_slate_triage
+from scriptguard.pipeline import RateLimitExceeded, describe_error, run_slate_triage
 from scriptguard.schemas import CoverageReport
 
 load_dotenv()
@@ -951,7 +951,17 @@ if st.session_state.processing:
                 st.stop()
             except Exception as exc:  # noqa: BLE001 — surface any pipeline failure to the user
                 st.session_state.processing = False
-                st.error(f"Error generating coverage: {exc}")
+                # describe_error unwraps the ExceptionGroup that ADK's ParallelAgent
+                # (asyncio.TaskGroup) raises, which otherwise reads only as
+                # "unhandled errors in a TaskGroup (1 sub-exception)".
+                detail = describe_error(exc)
+                st.error(f"Error generating coverage: {detail}")
+                if any(m in detail for m in ("429", "RESOURCE_EXHAUSTED", "quota", "503", "UNAVAILABLE")):
+                    st.info(
+                        "This looks like a Gemini quota/availability error rather than a bug "
+                        "in the pipeline. Wait a minute and try again, or use an API key with "
+                        "billing enabled to avoid free-tier limits."
+                    )
                 st.stop()
 
         st.session_state.results = (reports, ranking)
